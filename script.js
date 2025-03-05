@@ -1,1 +1,1 @@
-console.log("this is inside the JS file");
+console.log("hidden");
