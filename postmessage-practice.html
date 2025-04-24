@@ -39,6 +39,65 @@
     });
   </script>
 
+  <!-- 🧨 BAD: origin check exists, but it's meaningless -->
+  <script>
+    window.addEventListener("message", function (event) {
+      if (event.origin === "*" || event.origin) {
+        document.getElementById("output").innerHTML = event.data;
+      }
+    });
+  </script>
+
+
+  <!-- 🧨 Logic flaw: allows subdomain spoofing -->
+  <script>
+    const allowedOrigins = [
+      "https://secure.example.com"
+    ];
+
+    window.addEventListener("message", function (event) {
+      if (allowedOrigins.some(origin => event.origin.endsWith("example.com"))) {
+        document.body.innerHTML = event.data;
+      }
+    });
+  </script>
+
+  <!-- 🧨 Still vulnerable if the trusted site gets compromised or loads attacker content -->
+  <script>
+    const allowedOrigin = "https://trusted.example.com";
+
+    window.addEventListener("message", function (event) {
+      if (event.origin === allowedOrigin) {
+        document.getElementById("output").innerHTML = event.data;
+      }
+    });
+  </script>
+
+  <!-- 🧨 Bad sanitization -->
+  <script>
+    function sanitize(input) {
+      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    window.addEventListener("message", function (event) {
+      if (event.origin === "https://safe.com") {
+        const sanitized = sanitize(event.data);
+        document.getElementById("output").innerHTML = sanitized;
+      }
+    });
+  </script>
+
+  <!-- 🧨 Parses attacker input -->
+  <script>
+    window.addEventListener("message", function (event) {
+      try {
+        const data = JSON.parse(event.data);
+        document.getElementById("output").innerHTML = data.html;
+      } catch (e) {
+        console.error("Malformed JSON");
+      }
+    });
+  </script>
 
 </body>
 
