@@ -14,7 +14,7 @@
       console.log("[Receiver] Message received from:", event.origin);
       if (event.data === "getToken") {
         console.log("[Receiver] Sending token to:", event.origin);
-        event.source.postMessage("Your token is: " + token, event.origin);
+        alert("Your token is: " + token, event.origin);
       }
     });
   </script>
