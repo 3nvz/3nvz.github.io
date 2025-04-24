@@ -1,29 +1,27 @@
-<!-- Save as receiver.html -->
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Vulnerable PostMessage - Reflection</title>
+  <title>Vulnerable PostMessage - JavaScript Injection</title>
 </head>
-
 <body>
-  <h1>PostMessage Reflection Demo</h1>
+  <h1>PostMessage JS Eval Demo</h1>
   <div id="output"></div>
 
-  <!-- 🧨 Bad sanitization -->
   <script>
     function sanitize(input) {
-      return input.replace(/>/g, "&gt;");
+      // Useless here, doesn't affect code execution
+      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     window.addEventListener("message", function (event) {
       if (event.origin === "https://3nvz.github.io") {
         const sanitized = sanitize(event.data);
-        document.getElementById("output").innerHTML = sanitized;
+        
+        // 🔥 EVAL BAD PRACTICE
+        const result = eval(`"Result: ${sanitized}"`);
+        document.getElementById("output").textContent = result;
       }
     });
   </script>
-
 </body>
-
 </html>
