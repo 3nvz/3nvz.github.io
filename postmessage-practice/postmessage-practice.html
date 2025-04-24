@@ -1,104 +1,25 @@
-<!-- Save as receiver.html -->
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>Vulnerable PostMessage - Reflection</title>
+  <meta charset="UTF-8">
+  <title>PostMessage Lab Index</title>
+  <link rel="stylesheet" href="../style.css">
 </head>
-
 <body>
-  <h1>PostMessage Reflection Demo</h1>
-  <div id="output"></div>
-
-  <!-- ⚠️ No origin check — vulnerable to simple XSS -->
-  <script>
-    window.addEventListener("message", function (event) {
-      document.getElementById("output").innerHTML = event.data;
-    });
-  </script>
-
-  <!-- ⚠️ Sends token to whoever asks -->
-  <script>
-    const token = "super_secret_token_12345";
-    window.addEventListener("message", function (event) {
-      if (event.data === "getToken") {
-        event.source.postMessage("Your token is: " + token, event.origin);
-      }
-    });
-  </script>
-
-  <!-- ⚠️ No verification of source or user -->
-  <script>
-    let isAdmin = false;
-
-    window.addEventListener("message", function (event) {
-      if (event.data.action === "setAdmin") {
-        isAdmin = true;
-        alert("Admin privileges granted!");
-      }
-    });
-  </script>
-
-  <!-- 🧨 BAD: origin check exists, but it's meaningless -->
-  <script>
-    window.addEventListener("message", function (event) {
-      if (event.origin === "*" || event.origin) {
-        document.getElementById("output").innerHTML = event.data;
-      }
-    });
-  </script>
-
-
-  <!-- 🧨 Logic flaw: allows subdomain spoofing -->
-  <script>
-    const allowedOrigins = [
-      "https://secure.example.com"
-    ];
-
-    window.addEventListener("message", function (event) {
-      if (allowedOrigins.some(origin => event.origin.endsWith("example.com"))) {
-        document.body.innerHTML = event.data;
-      }
-    });
-  </script>
-
-  <!-- 🧨 Still vulnerable if the trusted site gets compromised or loads attacker content -->
-  <script>
-    const allowedOrigin = "https://trusted.example.com";
-
-    window.addEventListener("message", function (event) {
-      if (event.origin === allowedOrigin) {
-        document.getElementById("output").innerHTML = event.data;
-      }
-    });
-  </script>
-
-  <!-- 🧨 Bad sanitization -->
-  <script>
-    function sanitize(input) {
-      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    window.addEventListener("message", function (event) {
-      if (event.origin === "https://safe.com") {
-        const sanitized = sanitize(event.data);
-        document.getElementById("output").innerHTML = sanitized;
-      }
-    });
-  </script>
-
-  <!-- 🧨 Parses attacker input -->
-  <script>
-    window.addEventListener("message", function (event) {
-      try {
-        const data = JSON.parse(event.data);
-        document.getElementById("output").innerHTML = data.html;
-      } catch (e) {
-        console.error("Malformed JSON");
-      }
-    });
-  </script>
-
+  <h1>🧪 PostMessage Vulnerability Labs</h1>
+  <ul>
+    <li><a href="bad-origin-check-one.html">Bad Origin Check - One</a></li>
+    <li><a href="bad-origin-check-two.html">Bad Origin Check - Two</a></li>
+    <li><a href="bad-sanitize.html">Bad Sanitization</a></li>
+    <li><a href="enable-flag.html">Enable Flag via Message</a></li>
+    <li><a href="json-parse.html">JSON Parse Injection</a></li>
+    <li><a href="no-origin-check.html">No Origin Check</a></li>
+    <li><a href="postmessage-attacker.html">Attacker Page (Exploit)</a></li>
+    <li><a href="postmessage-practice.html">Practice Playground</a></li>
+    <li><a href="token-to-everyone.html">Token Leak to Everyone</a></li>
+    <li><a href="detectify-csrf-poc.html">CSRF Token Leak via postMessage</a></li>
+    <li><a href="full-ssrf-poc.html">Full SSRF via Message Injection</a></li>
+    <li><a href="iframe-poc.html">Iframe Embed PoC</a></li>
+  </ul>
 </body>
-
 </html>

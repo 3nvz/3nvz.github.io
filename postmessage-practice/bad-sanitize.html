@@ -1,0 +1,29 @@
+<!-- Save as receiver.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vulnerable PostMessage - Reflection</title>
+</head>
+
+<body>
+  <h1>PostMessage Reflection Demo</h1>
+  <div id="output"></div>
+
+  <!-- 🧨 Bad sanitization -->
+  <script>
+    function sanitize(input) {
+      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    window.addEventListener("message", function (event) {
+      if (event.origin === "https://safe.com") {
+        const sanitized = sanitize(event.data);
+        document.getElementById("output").innerHTML = sanitized;
+      }
+    });
+  </script>
+
+</body>
+
+</html>

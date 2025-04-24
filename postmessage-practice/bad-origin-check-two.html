@@ -1,0 +1,28 @@
+<!-- Save as receiver.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vulnerable PostMessage - Reflection</title>
+</head>
+
+<body>
+  <h1>PostMessage Reflection Demo</h1>
+  <div id="output"></div>
+
+  <!-- 🧨 Logic flaw: allows subdomain spoofing -->
+  <script>
+    const allowedOrigins = [
+      "https://secure.example.com"
+    ];
+
+    window.addEventListener("message", function (event) {
+      if (allowedOrigins.some(origin => event.origin.endsWith("example.com"))) {
+        document.body.innerHTML = event.data;
+      }
+    });
+  </script>
+
+</body>
+
+</html>

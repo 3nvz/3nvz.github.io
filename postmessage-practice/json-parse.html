@@ -1,0 +1,27 @@
+<!-- Save as receiver.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vulnerable PostMessage - Reflection</title>
+</head>
+
+<body>
+  <h1>PostMessage Reflection Demo</h1>
+  <div id="output"></div>
+
+  <!-- 🧨 Parses attacker input -->
+  <script>
+    window.addEventListener("message", function (event) {
+      try {
+        const data = JSON.parse(event.data);
+        document.getElementById("output").innerHTML = data.html;
+      } catch (e) {
+        console.error("Malformed JSON");
+      }
+    });
+  </script>
+
+</body>
+
+</html>
