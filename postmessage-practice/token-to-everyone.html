@@ -1,25 +1,22 @@
-<!-- Save as receiver.html -->
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Vulnerable PostMessage - Reflection</title>
+  <title>Token Receiver</title>
 </head>
-
 <body>
-  <h1>PostMessage Reflection Demo</h1>
-  <div id="output"></div>
+  <h1>Receiver</h1>
 
-  <!-- ⚠️ Sends token to whoever asks -->
+    <!-- ⚠️ Sends token to whoever asks -->
   <script>
     const token = "super_secret_token_12345";
+
     window.addEventListener("message", function (event) {
+      console.log("[Receiver] Message received from:", event.origin);
       if (event.data === "getToken") {
+        console.log("[Receiver] Sending token to:", event.origin);
         event.source.postMessage("Your token is: " + token, event.origin);
       }
     });
   </script>
-
 </body>
-
 </html>
