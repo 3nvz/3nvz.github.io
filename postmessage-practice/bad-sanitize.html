@@ -13,7 +13,7 @@
   <!-- 🧨 Bad sanitization -->
   <script>
     function sanitize(input) {
-      return input.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return input.replace(/>/g, "&gt;");
     }
 
     window.addEventListener("message", function (event) {
