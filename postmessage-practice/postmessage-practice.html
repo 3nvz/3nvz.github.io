@@ -21,6 +21,8 @@
     <li><a href="json-parse-two.html">JSON Parse Injection - Two</a></li>
   </ul>
 
+  <hr>
+
   <div class="explanation-div">
     <h3>Description</h3>
     <p>
@@ -28,6 +30,9 @@
       <i>except</i> for <i>'Bad Origin Check - Two'</i> and <i>'Bad Origin Check - Three'</i>,
       which require a separate origin to exploit.
     </p>
+    <p>You would need to register domains that include/end with the appropriate domain, to be able to exploit these
+      <code>postMessage</code> implementations. I just included them here, to show that origin checks like these are
+      still vulnerable.</p>
   </div>
 
   <div class="exploit-example-div">
