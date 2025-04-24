@@ -18,7 +18,7 @@
         const sanitized = sanitize(event.data);
         
         // 🔥 EVAL BAD PRACTICE
-        const result = eval(`"Result: ${sanitized}"`);
+        const result = eval(sanitized);
         document.getElementById("output").textContent = result;
       }
     });
