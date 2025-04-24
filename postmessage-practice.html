@@ -27,6 +27,18 @@
     });
   </script>
 
+  <!-- ⚠️ No verification of source or user -->
+  <script>
+    let isAdmin = false;
+
+    window.addEventListener("message", function (event) {
+      if (event.data.action === "setAdmin") {
+        isAdmin = true;
+        alert("Admin privileges granted!");
+      }
+    });
+  </script>
+
 
 </body>
 
