@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vulnerable PostMessage - Reflection</title>
+</head>
+
+<body>
+  <h1>Bad Origin Check - Two</h1>
+  <div id="output"></div>
+
+  <!-- 🧨 Logic flaw: allows subdomain/domain spoofing -->
+<script>
+    window.addEventListener("message", function(event) {
+      if (event.origin.includes("trusted.com")) {
+        document.body.innerHTML = event.data;
+      }
+    });
+  </script>
+  
+</body>
+
+</html>
