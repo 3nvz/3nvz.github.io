@@ -1,0 +1,22 @@
+<!-- Save as receiver.html -->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Vulnerable PostMessage - Reflection</title>
+</head>
+
+<body>
+  <h1>PostMessage No Origin Check Demo</h1>
+  <div id="output"></div>
+
+  <!-- ⚠️ No origin check — vulnerable to simple XSS -->
+  <script>
+    window.addEventListener("message", function (event) {
+      document.getElementById("output").innerHTML = event.data;
+    });
+  </script>
+
+</body>
+
+</html>
