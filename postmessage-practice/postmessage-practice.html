@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>PostMessage Lab Index</title>
   <link rel="stylesheet" href="../style.css">
 </head>
+
 <body>
   <h1>🧪 PostMessage Vulnerability Labs</h1>
   <ul>
@@ -17,7 +19,27 @@
     <li><a href="bad-sanitize.html">Bad Sanitization</a></li>
     <li><a href="json-parse-one.html">JSON Parse Injection - One</a></li>
     <li><a href="json-parse-two.html">JSON Parse Injection - Two</a></li>
-    <li><a href="postmessage-attacker.html">Attacker Page (Exploit)</a></li>
   </ul>
+
+  <div class="explanation-div">
+    <h3>Description</h3>
+    <p>
+      All labs on this site can be solved directly through the browser console,
+      <i>except</i> for <i>'Bad Origin Check - Two'</i> and <i>'Bad Origin Check - Three'</i>,
+      which require a separate origin to exploit.
+    </p>
+  </div>
+
+  <div class="exploit-example-div">
+    <h3>Basic Exploit Example</h3>
+    <p>
+      Here's a simple example of how a real-world <code>postMessage</code> attack can be executed.
+      This demonstration targets the <i>'No Origin Check'</i> lab on this site. Just click me 👇
+    </p>
+    <li><a href="postmessage-attacker.html">Attacker Page (Exploit)</a></li>
+  </div>
+
+
 </body>
+
 </html>
