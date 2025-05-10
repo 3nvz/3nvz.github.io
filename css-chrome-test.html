@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fake CSRF Page</title>
+
+  <!-- Meta tag with CSRF token -->
+  <meta name="oauth_csrf_token" content="123e4567-e89b-12d3-a456-426614174000">
+</head>
+
+<body>
+  <h1>Exfiltrate Me</h1>
+
+  <!-- Simulated login form with CSRF token -->
+  <form method="POST" action="/login">
+    <input type="hidden" name="csrf_token" value="abcde-12345-fghij-67890">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" placeholder="Enter username">
+    <br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" placeholder="Enter password">
+    <br>
+    <button type="submit">Login</button>
+  </form>
+
+  <!-- Simulated vulnerable input: CSS injection via placeholder -->
+  <input type="text" placeholder='"><style>body { background:url(//attacker.com/poc); }</style>'>
+
+</body>
+</html>
