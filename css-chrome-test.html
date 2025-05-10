@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Manual CSS/XSS Injection Test</title>
+  <title>XSS & CSS Injection Test</title>
 
   <!-- Meta tag with CSRF token -->
   <meta name="oauth_csrf_token" content="123e4567-e89b-12d3-a456-426614174000">
@@ -10,13 +10,19 @@
 
 <body>
 
-  <!-- Form with only CSRF token -->
+  <!-- Fake form with only a CSRF token -->
   <form>
     <input type="hidden" name="csrf_token" value="abcde-12345-fghij-67890">
   </form>
 
-  <!-- Vulnerable input field (not prefilled) -->
-  <input type="text" id="vuln" name="vuln" placeholder="Inject here">
+  <h2>Vulnerable Input (Reflected)</h2>
+
+  <form onsubmit="event.preventDefault(); document.getElementById('output').innerHTML = document.getElementById('vuln').value;">
+    <input type="text" id="vuln" placeholder="Type your payload here">
+    <button type="submit">Submit</button>
+  </form>
+
+  <div id="output" style="margin-top:20px; border:1px solid #ccc; padding:10px;"></div>
 
 </body>
 </html>
