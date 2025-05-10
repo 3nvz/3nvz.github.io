@@ -15,6 +15,8 @@
     <input type="hidden" name="csrf_token" value="abcde-12345-fghij-67890">
   </form>
 
+  <div id="leak" data-token="abcde-12345-fghij-67890"></div>
+
   <h2>Vulnerable Input (Reflected)</h2>
 
   <form onsubmit="event.preventDefault(); document.getElementById('output').innerHTML = document.getElementById('vuln').value;">
