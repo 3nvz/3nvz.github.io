@@ -2,20 +2,13 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>XSS & CSS Injection Test</title>
+  <title>CSS Injection Test</title>
 
   <!-- Meta tag with CSRF token -->
   <meta name="oauth_csrf_token" content="123e4567-e89b-12d3-a456-426614174000">
 </head>
 
 <body>
-
-  <!-- Fake form with only a CSRF token -->
-  <form>
-    <input type="hidden" name="csrf_token" value="abcde-12345-fghij-67890">
-  </form>
-
-  <div id="leak" data-token="abcde-12345-fghij-67890"></div>
 
   <h2>Vulnerable Input (Reflected)</h2>
 
