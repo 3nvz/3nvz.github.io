@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Drive API Test</title>
+    <script src="https://apis.google.com/js/api.js"></script>
+  </head>
+  <body>
+    <button onclick="start()">Sign In</button>
+    <script>
+      function start() {
+        gapi.load('client:auth2', () => {
+          gapi.client.init({
+            apiKey: "AIzaSyAOHzpLbFWAcLwrOn1IvQeVd0jHRntTlPk",
+            clientId: "YOUR_CLIENT_ID.apps.googleusercontent.com",
+            discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+            scope: "https://www.googleapis.com/auth/drive.file"
+          }).then(() => {
+            return gapi.auth2.getAuthInstance().signIn();
+          }).then(user => {
+            console.log("✅ User signed in", user);
+          }).catch(err => {
+            console.error("❌ Error", err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
