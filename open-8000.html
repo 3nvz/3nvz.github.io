@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Embed https://127.0.0.1:8000</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:18px;background:#fff;color:#111}
+    .info{margin-bottom:12px;color:#444}
+    .frameWrap{border:1px solid #ddd;border-radius:8px;overflow:hidden;width:100%;max-width:980px;height:520px}
+    iframe{width:100%;height:100%;border:0}
+    .note{font-size:13px;color:#666;margin-top:8px}
+    .status{font-weight:700;margin-top:8px}
+    button{margin-top:8px;padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <h2>Embed: https://127.0.0.1:8000</h2>
+  <div class="info">This page will try to embed the URL below in an iframe and report whether it appears to have loaded or been blocked.</div>
+
+  <div class="frameWrap" id="frameWrap"></div>
+
+  <div class="status" id="status">Starting...</div>
+  <div class="note">
+    If the iframe is blank or shows an error, the host likely rejects framing (X-Frame-Options/CSP), or your browser blocked the request (TLS or mixed-content).
+  </div>
+
+  <button id="openTab">Open https://127.0.0.1:8000 in new tab</button>
+
+<script>
+(function(){
+  const url = 'https://127.0.0.1:8000';
+  const frameWrap = document.getElementById('frameWrap');
+  const statusEl = document.getElementById('status');
+  const openTabBtn = document.getElementById('openTab');
+
+  // Create iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.loading = 'eager';
+  // You can add sandbox attribute if you want to restrict iframe behavior:
+  // iframe.sandbox = 'allow-forms allow-scripts allow-same-origin';
+  frameWrap.appendChild(iframe);
+
+  // Heuristic detection:
+  // - 'load' event usually fires when the iframe successfully navigates (even cross-origin).
+  // - 'error' event rarely fires for cross-origin navigations, so we use a timeout to detect "no-load"
+  let settled = false;
+  const loadTimeout = 4000; // ms to wait before declaring unknown/blocked
+
+  function mark(msg, color){
+    statusEl.textContent = msg;
+    statusEl.style.color = color;
+  }
+
+  iframe.addEventListener('load', () => {
+    if (settled) return;
+    settled = true;
+    // Note: a 'load' doesn't guarantee the page rendered (X-Frame might still allow navigation and then show blank),
+    // but generally load is a good sign the remote responded and didn't outright refuse load.
+    mark('Iframe load event fired — the target likely responded and loaded.', 'green');
+  });
+
+  iframe.addEventListener('error', () => {
+    if (settled) return;
+    settled = true;
+    mark('Iframe error event — the browser signalled a load error (likely blocked or network/TLS issue).', 'crimson');
+  });
+
+  // After timeout, if no load or error: treat as "timed out / possibly blocked" (heuristic)
+  setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    // check if frame has any content by trying to read its width/height; this is not definitive for cross-origin.
+    try {
+      const doc = iframe.contentDocument; // will throw for cross-origin in many cases
+      if (doc && doc.body && doc.body.children.length > 0) {
+        mark('Iframe appears to contain content (same-origin).', 'green');
+        return;
+      }
+    } catch (e) {
+      // cross-origin access denied — fall back to heuristic
+    }
+    mark('No load detected within timeout — iframe may be blocked by X-Frame/CSP or TLS/mixed-content was prevented.', 'orange');
+  }, loadTimeout);
+
+  openTabBtn.addEventListener('click', () => {
+    window.open(url, '_blank');
+  });
+
+  // initial message
+  mark('Iframe inserted, waiting for load event or timeout...', '#444');
+
+})();
+</script>
+</body>
+</html>
