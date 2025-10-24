@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Localhost Auto Redirect to Open Port</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Arial;margin:18px;background:#fafafa;color:#111}
+    h1{font-size:18px;margin-bottom:6px}
+  </style>
+</head>
+<body>
+  <h1>Localhost Port Auto Redirect</h1>
+  <div id="status">Scanning common ports on <b>127.0.0.1</b>...</div>
+
+<script>
+(async () => {
+  const HOST = '127.0.0.1';
+  const TIMEOUT_MS = 900;
+  const CONCURRENCY = 100;
+  const PORTS = [
+    8000,8080,8081,8088,8443,8500,8888,9000,9090,
+    9200,9300,9999,11211,27017,50070,50075
+  ];
+
+  const statusEl = document.getElementById('status');
+  function setStatus(txt){ statusEl.textContent = txt; }
+
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+  }
+
+  async function isOpen(port) {
+    const url = `http://${HOST}:${port}/?check=${Math.random()}`;
+    try {
+      await withTimeout(fetch(url, { mode:'no-cors', cache:'no-store' }), TIMEOUT_MS);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function chunked(ports, concurrency) {
+    for (let i = 0; i < ports.length; i += concurrency) {
+      const batch = ports.slice(i, i + concurrency);
+      const checks = await Promise.all(batch.map(async port => {
+        const ok = await isOpen(port);
+        if (ok) {
+          // redirect immediately to the first open port
+          window.location.href = `http://${HOST}:${port}`;
+        }
+        return ok;
+      }));
+      setStatus(`Checked ${Math.min(i+concurrency, ports.length)}/${ports.length} ports...`);
+      await new Promise(r => setTimeout(r, 25));
+    }
+  }
+
+  await chunked(PORTS, CONCURRENCY);
+  setStatus('No open ports detected (via fetch).');
+})();
+</script>
+</body>
+</html>
