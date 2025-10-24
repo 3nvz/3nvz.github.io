@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XSS Animation Test</title>
+</head>
+<body>
+
+    <h1>testing</h1>
+  <style>
+    @keyframes slidein {}
+  </style>
+
+  <xss 
+    style="animation-duration:1s;animation-name:slidein;animation-iteration-count:2"
+    onwebkitanimationstart="reportError(new Error('3nvz'))">
+  </xss>
+
+  <img src=x onwebkitmouseforcedown=alert(1)>
+
+</body>
+
+

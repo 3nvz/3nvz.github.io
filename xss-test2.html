@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>XSS Animation Test — Minimal</title>
+  <style>
+    /* empty keyframes are fine — they only need to exist */
+    @keyframes slidein {}
+    @-webkit-keyframes slidein {}
+  </style>
+</head>
+<body>
+
+  <xss
+    style="display:inline-block; animation-duration:1s; animation-name:slidein; animation-iteration-count:2;"
+    onanimationiteration="alert('animationiteration (std)')"
+    onwebkitAnimationIteration="alert('webkitAnimationIteration (prefixed)')"
+    onwebkitanimationstart="alert('webkitAnimationStart')"
+  ></xss>
+
+</body>
+</html>
