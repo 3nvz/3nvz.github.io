@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Inline Dir Scanner — 127.0.0.1:8000</title>
+<style>
+  body{font-family:system-ui,Arial;margin:12px;background:#fff;color:#111}
+  header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  input,button,select,textarea{padding:6px;border:1px solid #ccc;border-radius:6px}
+  #status{color:#444;margin-bottom:8px}
+  #results{max-height:34vh;overflow:auto;border-top:1px solid #eee;padding-top:8px}
+  .row{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #f6f6f6}
+  .path{font-family:monospace}
+  .status{margin-left:auto;color:#666}
+  .good{color:green;font-weight:700}
+  .heur{color:orange}
+  iframe{width:100%;height:420px;border:1px solid #ddd;border-radius:6px;margin-top:12px}
+  .small{font-size:12px;color:#666;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>Target:</strong> <code>http://127.0.0.1:8000</code></div>
+  <div>
+    Concurrency:
+    <select id="concurrency"><option>8</option><option>16</option><option selected>32</option><option>64</option></select>
+  </div>
+  <div>
+    Timeout ms:
+    <input id="timeout" value="1200" style="width:80px"/>
+  </div>
+  <div>
+    <button id="stopBtn">Stop</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+</header>
+
+<div id="status">Auto-starting directory scan against <code>127.0.0.1:8000</code>...</div>
+
+<div>
+  <label>Wordlist (built-in — edit in file if you want):</label><br/>
+  <textarea id="wordlist" rows="8" style="width:100%;font-family:monospace">
+admin
+login
+logout
+dashboard
+api
+config
+.git
+.git/config
+.env
+.htaccess
+server-status
+phpinfo.php
+status
+readme
+README
+uploads
+backup
+backup.zip
+db.sql
+index.php
+index.html
+admin/login
+admin.php
+wp-admin
+wp-login.php
+manager/html
+console
+/.git
+/.env
+/.htpasswd
+svn
+setup
+install
+test
+api
+apiv2
+apiv1
+apiv3
+</textarea>
+</div>
+
+<div id="results"></div>
+
+<h3>Preview / viewer</h3>
+<iframe id="viewer" src=""></iframe>
+
+<div class="small">Notes: script tries a CORS fetch first (accurate if the target allows CORS). If CORS is blocked it falls back to a <code>no-cors</code> probe (heuristic: a resolved fetch indicates something responded but you won't get status/body). Only scan hosts you control.</div>
+
+<script>
+(async function(){
+  const TARGET_BASE = 'http://127.0.0.1:8000';
+  const stopBtn = document.getElementById('stopBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+  const viewer = document.getElementById('viewer');
+  const wordlistEl = document.getElementById('wordlist');
+  const concurrencySelect = document.getElementById('concurrency');
+  const timeoutInput = document.getElementById('timeout');
+
+  let stopRequested = false;
+
+  stopBtn.addEventListener('click', () => {
+    stopRequested = true;
+    setStatus('Stopping soon — finishing in-flight requests...');
+    stopBtn.disabled = true;
+  });
+  clearBtn.addEventListener('click', () => {
+    resultsEl.innerHTML = '';
+    setStatus('Results cleared. Running...');
+  });
+
+  function setStatus(txt){ statusEl.textContent = txt; }
+
+  function withTimeout(promise, ms){
+    return Promise.race([promise, new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), ms))]);
+  }
+
+  async function tryCorsFetch(url, timeoutMs){
+    try {
+      const resp = await withTimeout(fetch(url, { method:'GET', mode:'cors', cache:'no-store' }), timeoutMs);
+      // try to read small body safely (may be large — avoid heavy reads)
+      let text = null;
+      try { text = await resp.text(); } catch(e) { text = null; }
+      return { success: true, type: 'cors', status: resp.status, ok: resp.ok, bodySnippet: text ? text.slice(0,200) : null };
+    } catch (err) {
+      return { success: false, type: 'cors', error: err.message || String(err) };
+    }
+  }
+
+  async function tryNoCorsProbe(url, timeoutMs){
+    try {
+      await withTimeout(fetch(url, { method:'GET', mode:'no-cors', cache:'no-store' }), timeoutMs);
+      return { success:true, type:'no-cors' }; // heuristic only
+    } catch (err) {
+      return { success:false, type:'no-cors', error: err.message || String(err) };
+    }
+  }
+
+  function addResult(path, info){
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    const p = document.createElement('div');
+    p.className = 'path';
+    p.textContent = path;
+    row.appendChild(p);
+
+    const st = document.createElement('div');
+    st.className = 'status';
+    if (info.type === 'cors' && info.success) {
+      st.innerHTML = `<span class="good">CORS ${info.status}</span>`;
+    } else if (info.type === 'cors' && !info.success) {
+      st.innerHTML = `<span class="bad">CORS error</span>`;
+    } else if (info.type === 'no-cors' && info.success) {
+      st.innerHTML = `<span class="heur">responded (no-cors)</span>`;
+    } else {
+      st.innerHTML = `<span class="bad">no response</span>`;
+    }
+    row.appendChild(st);
+
+    const actions = document.createElement('div');
+    actions.style.marginLeft = '12px';
+    const openBtn = document.createElement('button');
+    openBtn.textContent = 'Open';
+    openBtn.onclick = () => { window.open(info.url, '_blank'); };
+    actions.appendChild(openBtn);
+
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = 'Load iframe';
+    loadBtn.style.marginLeft = '6px';
+    loadBtn.onclick = () => { viewer.src = info.url; };
+    actions.appendChild(loadBtn);
+
+    row.appendChild(actions);
+    resultsEl.appendChild(row);
+  }
+
+  // worker pool scanner
+  async function scanList(paths, concurrency, timeoutMs){
+    stopRequested = false;
+    const total = paths.length;
+    let idx = 0;
+    let foundCount = 0;
+    setStatus(`0/${total} checked — found ${foundCount}`);
+
+    const workers = new Array(concurrency).fill(null).map(async () => {
+      while (!stopRequested) {
+        const i = idx++;
+        if (i >= total) break;
+        const path = paths[i].startsWith('/') ? paths[i] : '/'+paths[i];
+        const url = TARGET_BASE + path;
+        // try CORS first
+        const cors = await tryCorsFetch(url, timeoutMs);
+        if (cors.success && cors.type === 'cors' && (cors.status >= 200 && cors.status < 400)) {
+          addResult(path, Object.assign(cors, { url }));
+          foundCount++;
+        } else {
+          // fallback probe
+          const probe = await tryNoCorsProbe(url, timeoutMs);
+          if (probe.success) {
+            addResult(path, Object.assign(probe, { url }));
+            foundCount++;
+          }
+        }
+        setStatus(`${i+1}/${total} checked — found ${foundCount}`);
+      }
+    });
+
+    await Promise.all(workers);
+    setStatus(`Scan finished — checked ${total}, found ${foundCount}`);
+  }
+
+  // auto-start on load
+  (function autoStart(){
+    const raw = wordlistEl.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const concurrency = parseInt(concurrencySelect.value,10) || 32;
+    const timeoutMs = Math.max(200, parseInt(timeoutInput.value,10) || 1200);
+    // Build absolute URLs info for results
+    const paths = raw;
+    // small safety: confirm huge lists
+    if (paths.length > 200 && !confirm(`Wordlist has ${paths.length} entries. Start scan?`)) {
+      setStatus('Scan cancelled by user.');
+      return;
+    }
+    scanList(paths, concurrency, timeoutMs).catch(e => setStatus('Scan error: '+ (e && e.message?e.message:e)));
+  })();
+
+})();
+</script>
+</body>
+</html>
