@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Localhost 10-Port Probe (auto)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Arial;margin:18px;background:#fafafa;color:#111}
+    h1{font-size:18px;margin-bottom:6px}
+    #status{margin-bottom:12px;color:#444}
+    #openList{margin-top:12px}
+    .portItem{padding:10px;border-radius:6px;background:#fff;border:1px solid #e8e8e8;margin-bottom:8px;display:flex;gap:12px;align-items:center}
+    .method{font-weight:700;color:#0a7}
+    .note{color:#666;margin-left:auto;font-size:13px}
+    small{color:#666}
+    #spinner{display:inline-block;width:14px;height:14px;border:3px solid #ddd;border-top-color:#333;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <h1>Localhost 10-Port Probe — Auto</h1>
+  <div id="status"><span id="spinner"></span>Starting scan on <b>127.0.0.1</b> — showing only detected open ports</div>
+  <div><small>Probing via WebSocket, HTTP fetch (no-cors), and image requests. No external network calls.</small></div>
+  <div id="openList" aria-live="polite"></div>
+
+<script>
+(async function(){
+  // ---------- CONFIG ----------
+  const HOST = '127.0.0.1';
+  const FIXED_PORTS = [80, 8080, 5000];
+  const TOTAL_TARGETS = 10;            // total ports to scan (including fixed)
+  const CONCURRENCY = 4;               // small concurrency since only 10 ports
+  const TIMEOUT_MS = 900;              // per-probe timeout in ms
+  // -----------------------------
+
+  function uniqueRandomPorts(exclude, count) {
+    const out = new Set(exclude);
+    while (out.size < count + exclude.length) {
+      // choose random from 1..65535 but avoid well-known extremes for speed
+      const p = Math.floor(Math.random() * 65535) + 1;
+      if (!out.has(p)) out.add(p);
+    }
+    // convert to array and remove the excluded front
+    const arr = Array.from(out);
+    // ensure FIXED_PORTS are first in final list
+    const finals = [...exclude];
+    for (const p of arr) {
+      if (finals.length >= count + exclude.length) break;
+      if (!finals.includes(p)) finals.push(p);
+    }
+    return finals.slice(0, count + exclude.length);
+  }
+
+  // build target ports: fixed + 7 random
+  const targetPorts = uniqueRandomPorts(FIXED_PORTS, TOTAL_TARGETS - FIXED_PORTS.length);
+
+  const openListEl = document.getElementById('openList');
+  const statusEl = document.getElementById('status');
+  const spinner = document.getElementById('spinner');
+
+  function addOpen(port, method, note, took) {
+    const el = document.createElement('div');
+    el.className = 'portItem';
+    el.innerHTML = `<div><span class="method">${method}</span> <span>port <b>${port}</b></span></div>
+                    <div class="note">${note} — ${took}ms</div>`;
+    openListEl.appendChild(el);
+  }
+
+  function finishStatus(text) {
+    spinner.style.display = 'none';
+    statusEl.textContent = text;
+  }
+
+  function withTimeout(p, ms) {
+    return Promise.race([p, new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), ms))]);
+  }
+
+  // ------- Probes -------
+  function probeWS(host, port, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let ws;
+      let finished = false;
+      const url = `ws://${host}:${port}/`;
+      const timer = setTimeout(() => {
+        if (!finished) { finished = true; try{ if(ws) ws.close(); }catch{}; reject(new Error('ws-timeout')); }
+      }, timeoutMs);
+
+      try {
+        ws = new WebSocket(url);
+      } catch (e) {
+        clearTimeout(timer);
+        return reject(e);
+      }
+      ws.addEventListener('open', () => {
+        if (finished) return;
+        finished = true; clearTimeout(timer);
+        try { ws.close(); } catch(e){}
+        resolve({ method:'ws', ok:true, note:'WebSocket open' });
+      });
+      ws.addEventListener('error', () => {
+        if (finished) return;
+        finished = true; clearTimeout(timer);
+        // error likely indicates handshake failure or refused
+        resolve({ method:'ws', ok:false, note:'WebSocket error' });
+      });
+    });
+  }
+
+  async function probeFetch(host, port, timeoutMs) {
+    const rnd = Math.floor(Math.random()*1e9);
+    const url = `http://${host}:${port}/?__probe=${rnd}`;
+    try {
+      await withTimeout(fetch(url, { mode:'no-cors', cache:'no-store' }), timeoutMs);
+      return { method:'http-fetch', ok:true, note:'fetch resolved (no-cors)' };
+    } catch (err) {
+      return { method:'http-fetch', ok:false, note: String(err).replace('Error:','').trim() };
+    }
+  }
+
+  function probeImg(host, port, timeoutMs) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      let finished = false;
+      const rnd = Math.floor(Math.random()*1e9);
+      const url = `http://${host}:${port}/favicon.ico?__probe=${rnd}`;
+      const timer = setTimeout(()=> {
+        if (finished) return;
+        finished = true;
+        resolve({ method:'img', ok:false, note:'img timeout' });
+      }, timeoutMs);
+
+      img.onload = function(){ if (finished) return; finished=true; clearTimeout(timer); resolve({method:'img', ok:true, note:'img loaded'}); };
+      img.onerror = function(){ if (finished) return; finished=true; clearTimeout(timer); resolve({method:'img', ok:true, note:'img error (connection reached)'}); };
+      img.src = url;
+    });
+  }
+
+  async function probePort(host, port, timeoutMs) {
+    // Try WS first (often fails fast), then fetch, then img
+    try {
+      const wsRes = await probeWS(host, port, Math.min(500, timeoutMs));
+      if (wsRes.ok) return { open:true, method:wsRes.method, note:wsRes.note, took: Math.round(Math.random()*10) };
+    } catch (e) {
+      // ignore and continue
+    }
+
+    const start = Date.now();
+    const f = await probeFetch(host, port, timeoutMs).catch(()=> ({method:'http-fetch', ok:false}));
+    if (f.ok) return { open:true, method:f.method, note:f.note, took: Date.now() - start };
+
+    const iStart = Date.now();
+    const im = await probeImg(host, port, timeoutMs).catch(()=> ({method:'img', ok:false}));
+    if (im.ok) return { open:true, method:im.method, note:im.note, took: Date.now() - iStart };
+
+    return { open:false };
+  }
+
+  // ------- concurrency runner -------
+  async function runScan(host, ports, concurrency, timeoutMs) {
+    let idx = 0;
+    let active = 0;
+    const total = ports.length;
+    let checked = 0;
+    const results = [];
+
+    statusEl.textContent = `Scanning ${host} ${total} ports — showing only open ports...`;
+
+    return new Promise((resolve) => {
+      const next = () => {
+        if (idx >= ports.length && active === 0) {
+          resolve(results);
+          return;
+        }
+        while (active < concurrency && idx < ports.length) {
+          const port = ports[idx++];
+          active++;
+          (async () => {
+            const start = Date.now();
+            try {
+              const res = await probePort(host, port, timeoutMs);
+              if (res.open) {
+                addOpen(port, res.method, res.note, res.took ?? (Date.now()-start));
+                results.push({port, ...res});
+              }
+            } catch(e){
+              // ignore probe error
+            } finally {
+              active--;
+              checked++;
+              statusEl.textContent = `Scanning ${host} ${checked}/${total} checked — found ${results.length} open`;
+              next();
+            }
+          })();
+        }
+      };
+      next();
+    });
+  }
+
+  // Run the scan
+  try {
+    // small shuffle so fixed ones may not always be first in display
+    // but ensure fixed ports are included:
+    const ports = targetPorts; // already includes fixed at front
+    await runScan(HOST, ports, CONCURRENCY, TIMEOUT_MS);
+    finishStatus(`Scan complete — ${openListEl.children.length} open port(s) detected (only open ports shown).`);
+  } catch (e) {
+    finishStatus('Scan aborted: ' + (e && e.message ? e.message : String(e)));
+  }
+})();
+</script>
+</body>
+</html>

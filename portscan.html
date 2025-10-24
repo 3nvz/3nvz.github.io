@@ -1,0 +1,285 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Browser Port Probe (localhost)</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; padding: 18px; background:#fafafa; color:#111 }
+    label, input, button { font-size: 14px }
+    input[type="number"] { width: 90px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e6e6e6 }
+    th { background:#f0f0f0 }
+    .open { color: #0a7; }
+    .ws { color: #06c; }
+    .http { color: #c60; }
+    .indeterminate { color: #b8860b; }
+    .closed { color: #c00; }
+    #log { white-space: pre-wrap; background:#fff; border:1px solid #eee; padding:8px; margin-top:12px; height:120px; overflow:auto }
+  </style>
+</head>
+<body>
+  <h2>Browser Port Probe (localhost)</h2>
+  <p><strong>Note:</strong> This probes ports using WebSocket / HTTP / resource-loading heuristics. It cannot do raw TCP scans. Only scan hosts you own/are authorized to scan.</p>
+
+  <div>
+    <label>Host: <input id="host" value="127.0.0.1" /></label>
+    <label>Start port: <input id="start" type="number" value="1" min="1" max="65535" /></label>
+    <label>End port: <input id="end" type="number" value="1024" min="1" max="65535" /></label>
+    <label>Concurrency: <input id="concurrency" type="number" value="120" min="1" max="1000" /></label>
+    <label>Timeout ms: <input id="timeout" type="number" value="800" min="50" /></label>
+    <button id="startScan">Start scan</button>
+    <button id="stopScan" disabled>Stop</button>
+  </div>
+
+  <table id="resultsTable" aria-live="polite">
+    <thead>
+      <tr><th>Port</th><th>Status</th><th>Method</th><th>Notes</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="log"></div>
+
+<script>
+(function () {
+  const startBtn = document.getElementById('startScan');
+  const stopBtn = document.getElementById('stopScan');
+  const hostInput = document.getElementById('host');
+  const startInput = document.getElementById('start');
+  const endInput = document.getElementById('end');
+  const concurrencyInput = document.getElementById('concurrency');
+  const timeoutInput = document.getElementById('timeout');
+  const tableBody = document.querySelector('#resultsTable tbody');
+  const logEl = document.getElementById('log');
+
+  let controller = { stop: false };
+
+  function log(msg) {
+    logEl.textContent = `${new Date().toLocaleTimeString()} - ${msg}\n` + logEl.textContent;
+  }
+
+  function makeRow(port) {
+    const tr = document.createElement('tr');
+    tr.dataset.port = port;
+    tr.innerHTML = `<td>${port}</td><td class="status">Waiting</td><td class="method">—</td><td class="notes"></td>`;
+    tableBody.appendChild(tr);
+    return tr;
+  }
+
+  function updateRow(port, status, method, notes) {
+    let tr = tableBody.querySelector(`tr[data-port="${port}"]`);
+    if (!tr) tr = makeRow(port);
+    tr.querySelector('.status').textContent = status;
+    tr.querySelector('.method').textContent = method || '—';
+    tr.querySelector('.notes').textContent = notes || '';
+    tr.querySelector('.status').className = 'status ' + (status.toLowerCase().replace(/\s+/g,'-'));
+  }
+
+  // timeout helper
+  function withTimeout(promise, ms, tag) {
+    return Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout:' + (tag || ''))), ms))
+    ]);
+  }
+
+  // Try a WebSocket handshake probe
+  function probeWebSocket(host, port, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let ws;
+      let finished = false;
+      const url = `ws://${host}:${port}/`;
+      const t = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          try { if (ws) ws.close(); } catch(e){}
+          reject(new Error('ws-timeout'));
+        }
+      }, timeoutMs);
+
+      try {
+        ws = new WebSocket(url);
+      } catch (e) {
+        clearTimeout(t);
+        return reject(e);
+      }
+
+      ws.addEventListener('open', () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(t);
+        try { ws.close(); } catch(e){}
+        resolve({ method: 'ws', success: true, note: 'WebSocket open' });
+      });
+
+      ws.addEventListener('error', (ev) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(t);
+        // error may indicate connection refused or handshake failure
+        resolve({ method: 'ws', success: false, note: 'WebSocket error' });
+      });
+    });
+  }
+
+  // Try an HTTP fetch with no-cors (resolves on connection; reject on connection refused)
+  function probeFetch(host, port, timeoutMs) {
+    const url = `http://${host}:${port}/`;
+    // add a random query to prevent cached responses
+    const rnd = Math.floor(Math.random()*1000000);
+    return withTimeout(fetch(`${url}?_=${rnd}`, { mode: 'no-cors', cache: 'no-store' }), timeoutMs, 'fetch')
+      .then(() => ({ method: 'http-fetch', success: true, note: 'fetch resolved (no-cors)' }))
+      .catch(err => {
+        // fetch rejects when connection refused or network error
+        return { method: 'http-fetch', success: false, note: err && err.message ? err.message : 'fetch error' };
+      });
+  }
+
+  // Try loading an image; both onload and onerror that fire quickly are treated as "reachable"
+  function probeImage(host, port, timeoutMs) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      let finished = false;
+      const rnd = Math.floor(Math.random()*1000000);
+      const url = `http://${host}:${port}/favicon.ico?_=${rnd}`;
+
+      const t = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          // aborted / timed out => likely filtered/closed
+          resolve({ method: 'img', success: false, note: 'img timeout' });
+        }
+      }, timeoutMs);
+
+      img.onload = function () {
+        if (finished) return;
+        finished = true;
+        clearTimeout(t);
+        resolve({ method: 'img', success: true, note: 'img loaded' });
+      };
+      img.onerror = function () {
+        if (finished) return;
+        finished = true;
+        clearTimeout(t);
+        // onerror could mean resource not found, but connection happened; treat as reachable
+        resolve({ method: 'img', success: true, note: 'img error (connection likely reached)' });
+      };
+
+      // start probe
+      img.src = url;
+      // also try to trigger fetch by adding to DOM (not required)
+    });
+  }
+
+  // Single-port probe combining methods in priority order
+  async function probePort(host, port, timeoutMs) {
+    // try websocket first (fast to fail)
+    try {
+      const wsRes = await withTimeout(probeWebSocket(host, port, timeoutMs), timeoutMs + 50, 'ws');
+      if (wsRes.success) return { status: 'open', method: 'websocket', note: wsRes.note };
+      // if ws returned failure quickly, we continue to other probes
+    } catch (e) {
+      // ws attempt threw (e.g., invalid URL) -> continue to fetch/image
+    }
+
+    // try fetch
+    try {
+      const f = await probeFetch(host, port, timeoutMs);
+      if (f.success) return { status: 'open (http)', method: 'http-fetch', note: f.note };
+    } catch (e) {
+      // ignore
+    }
+
+    // try image probe
+    try {
+      const im = await probeImage(host, port, timeoutMs);
+      if (im.success) return { status: 'open (resource)', method: 'img', note: im.note };
+    } catch (e) {
+      // ignore
+    }
+
+    // If none succeeded quickly, mark as closed/filtered
+    return { status: 'closed/filtered', method: 'none', note: 'no probe succeeded within timeout' };
+  }
+
+  // concurrent worker queue
+  async function scanRange(host, ports, concurrency, timeoutMs) {
+    const results = {};
+    const q = ports.slice();
+    let active = 0;
+
+    return new Promise((resolve) => {
+      function next() {
+        if (controller.stop) {
+          resolve(results);
+          return;
+        }
+        if (q.length === 0 && active === 0) {
+          resolve(results);
+          return;
+        }
+        while (active < concurrency && q.length > 0 && !controller.stop) {
+          const port = q.shift();
+          active++;
+          // create row placeholder
+          makeRow(port);
+          // small delay to allow UI update
+          (async () => {
+            updateRow(port, 'Probing...', '', '');
+            const startT = Date.now();
+            const res = await probePort(host, port, timeoutMs).catch(err => ({ status:'closed/filtered', method:'error', note: String(err) }));
+            const dur = Date.now() - startT;
+            results[port] = res;
+            updateRow(port, res.status, res.method, `${res.note} (${dur}ms)`);
+            log(`port ${port}: ${res.status} via ${res.method} ${res.note}`);
+            active--;
+            next();
+          })();
+        }
+      }
+      next();
+    });
+  }
+
+  startBtn.addEventListener('click', async () => {
+    controller.stop = false;
+    tableBody.innerHTML = '';
+    logEl.textContent = '';
+
+    const host = hostInput.value.trim() || '127.0.0.1';
+    const start = Math.max(1, Math.min(65535, parseInt(startInput.value, 10) || 1));
+    const end = Math.max(1, Math.min(65535, parseInt(endInput.value, 10) || 1024));
+    const concurrency = Math.max(1, Math.min(1000, parseInt(concurrencyInput.value, 10) || 120));
+    const timeoutMs = Math.max(50, parseInt(timeoutInput.value, 10) || 800);
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    // build ports list in increasing order
+    const ports = [];
+    const s = Math.min(start, end);
+    const e = Math.max(start, end);
+    for (let p = s; p <= e; p++) ports.push(p);
+
+    log(`Starting scan ${host} ports ${s}-${e} (concurrency=${concurrency}, timeout=${timeoutMs}ms)`);
+    try {
+      const results = await scanRange(host, ports, concurrency, timeoutMs);
+      log('Scan complete.');
+    } catch (err) {
+      log('Scanner aborted: ' + String(err));
+    } finally {
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+
+  stopBtn.addEventListener('click', () => {
+    controller.stop = true;
+    log('Stop requested by user.');
+  });
+
+})();
+</script>
+</body>
+</html>
