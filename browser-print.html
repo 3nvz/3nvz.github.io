@@ -4,23 +4,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Browser Info</title>
+  <title>Browser Environment Inspector</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: system-ui, sans-serif;
+      background: #f9f9f9;
       padding: 20px;
+      color: #222;
     }
 
     pre {
       background: #f4f4f4;
-      padding: 10px;
       border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 
 <body>
-  <h1>Detected Browser Information</h1>
+  <h1>Browser Environment Inspector</h1>
   <pre id="output">Detecting...</pre>
 
   <script>
@@ -69,10 +73,121 @@
       return result;
     }
 
-    detectBrowser().then(info => {
-      document.getElementById('output').textContent =
-        `Browser Name: ${info.name}\nVersion: ${info.version}\nUser Agent: ${info.ua}\nSource: ${info.source}`;
-    });
+    function detectEnvironment() {
+      const env = {};
+
+      env.isTopWindow = window.top === window.self;
+      env.isFramed = !env.isTopWindow;
+      env.origin = location.origin;
+      env.referrer = document.referrer || 'None';
+      env.protocol = location.protocol;
+
+      env.sandboxed = false;
+      try { window.top.location.toString(); } catch { env.sandboxed = true; }
+
+      env.cookiesEnabled = navigator.cookieEnabled;
+
+      try { localStorage.setItem('x', '1'); localStorage.removeItem('x'); env.localStorage = true; } catch { env.localStorage = false; }
+      try { sessionStorage.setItem('x', '1'); sessionStorage.removeItem('x'); env.sessionStorage = true; } catch { env.sessionStorage = false; }
+
+      env.indexedDB = !!window.indexedDB;
+      env.serviceWorker = 'serviceWorker' in navigator;
+
+      try {
+        const canvas = document.createElement('canvas');
+        env.webgl = !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+      } catch {
+        env.webgl = false;
+      }
+
+      env.crossOriginIsolated = window.crossOriginIsolated;
+      env.secureContext = window.isSecureContext;
+      env.geolocation = 'geolocation' in navigator;
+      env.csp = document.querySelector("meta[http-equiv='Content-Security-Policy']") ? 'Present (meta tag)' : 'Not detected (meta)';
+      return env;
+    }
+
+    // --- NEW: Anti-spoofing heuristic detection ---
+    function heuristicBrowserCheck() {
+      const h = { detected: 'unknown', confidence: 0, notes: [] };
+
+      // Chrome / Edge (Blink)
+      if ('chrome' in window && !!window.chrome && 'webstore' in window.chrome) {
+        h.detected = 'Chrome or Chromium-based';
+        h.confidence += 40;
+        if ('userAgentData' in navigator) h.confidence += 20;
+      }
+
+      // Firefox (Gecko)
+      if (typeof InstallTrigger !== 'undefined') {
+        h.detected = 'Firefox';
+        h.confidence += 60;
+      }
+
+      // Safari (WebKit)
+      if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+        if ('safari' in window) {
+          h.detected = 'Safari';
+          h.confidence += 40;
+        }
+      }
+
+      // Feature-based version estimation (example heuristics)
+      const features = [];
+
+      // ES features introduced in versions (rough estimation)
+      if ('scheduler' in window) features.push('Chrome 94+');
+      if ('gpu' in navigator) features.push('Chrome/Edge 113+');
+      if ('permissions' in navigator && navigator.permissions.query.toString().includes('Promise')) features.push('Post-2017 browser');
+
+      // Collect notes
+      h.notes.push(...features);
+
+      // Normalize confidence
+      if (h.confidence > 100) h.confidence = 100;
+      return h;
+    }
+
+    (async () => {
+      const browser = await detectBrowser();
+      const env = detectEnvironment();
+      const heuristic = heuristicBrowserCheck();
+
+      const info = `
+=== Browser ===
+Name: ${browser.name}
+Version: ${browser.version}
+UA: ${browser.ua}
+Source: ${browser.source}
+
+=== Environment ===
+Top Window: ${env.isTopWindow}
+In Iframe: ${env.isFramed}
+Sandboxed: ${env.sandboxed}
+Origin: ${env.origin}
+Referrer: ${env.referrer}
+Protocol: ${env.protocol}
+Cross-Origin Isolated: ${env.crossOriginIsolated}
+Secure Context (HTTPS): ${env.secureContext}
+
+=== Features ===
+Cookies Enabled: ${env.cookiesEnabled}
+LocalStorage: ${env.localStorage}
+SessionStorage: ${env.sessionStorage}
+IndexedDB: ${env.indexedDB}
+Service Worker: ${env.serviceWorker}
+WebGL Available: ${env.webgl}
+Geolocation API: ${env.geolocation}
+CSP Meta Tag: ${env.csp}
+
+=== Anti-Spoofing Heuristics ===
+Heuristic Detected Browser: ${heuristic.detected}
+Confidence Score: ${heuristic.confidence}%
+Version Clues: ${heuristic.notes.join(', ') || 'None'}
+`;
+
+      document.getElementById('output').textContent = info;
+    })();
   </script>
 </body>
 
