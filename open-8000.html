@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Embed http://127.0.0.1:8000/install</title>
+  <title>Embed http://127.0.0.1:8000</title>
   <style>
     body{font-family:system-ui,Arial;margin:18px;background:#fff;color:#111}
     .info{margin-bottom:12px;color:#444}
@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <h2>Embed: http://127.0.0.1:8000/install</h2>
+  <h2>Embed: http://127.0.0.1:8000</h2>
   <div class="info">This page will try to embed the URL below in an iframe and report whether it appears to have loaded or been blocked.</div>
 
   <div class="frameWrap" id="frameWrap"></div>
@@ -24,11 +24,11 @@
     If the iframe is blank or shows an error, the host likely rejects framing (X-Frame-Options/CSP), or your browser blocked the request (TLS or mixed-content).
   </div>
 
-  <button id="openTab">Open http://127.0.0.1:8000/install in new tab</button>
+  <button id="openTab">Open http://127.0.0.1:8000 in new tab</button>
 
 <script>
 (function(){
-  const url = 'http://127.0.0.1:8000/install';
+  const url = 'http://127.0.0.1:8000';
   const frameWrap = document.getElementById('frameWrap');
   const statusEl = document.getElementById('status');
   const openTabBtn = document.getElementById('openTab');
