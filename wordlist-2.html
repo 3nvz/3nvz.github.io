@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Auto Dir Scanner + Embed (127.0.0.1:8000)</title>
+<style>
+  body{font-family:system-ui,Arial;margin:12px;background:#fff;color:#111}
+  header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  input,button,select,textarea{padding:6px;border:1px solid #ccc;border-radius:6px}
+  #status{color:#444;margin-bottom:8px}
+  #results{max-height:34vh;overflow:auto;border-top:1px solid #eee;padding-top:8px}
+  .row{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #f6f6f6}
+  .path{font-family:monospace}
+  .status{margin-left:auto;color:#666}
+  .good{color:green;font-weight:700}
+  .heur{color:orange}
+  iframe{width:100%;height:320px;border:1px solid #ddd;border-radius:6px;margin-top:8px}
+  .frameWrap{margin-bottom:12px}
+  .small{font-size:12px;color:#666;margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>Target:</strong> <code>http://127.0.0.1:8000</code></div>
+  <div>
+    Concurrency:
+    <select id="concurrency"><option>8</option><option>16</option><option selected>32</option><option>64</option></select>
+  </div>
+  <div>
+    Timeout ms:
+    <input id="timeout" value="1200" style="width:80px"/>
+  </div>
+  <div>
+    <button id="stopBtn">Stop</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+</header>
+
+<div id="status">Starting scan against <code>127.0.0.1:8000</code>…</div>
+
+<textarea id="wordlist" rows="6" style="width:100%;font-family:monospace">
+admin
+login
+logout
+dashboard
+api
+config
+.git
+.git/config
+.env
+.htaccess
+server-status
+phpinfo.php
+status
+readme
+README
+uploads
+backup
+backup.zip
+db.sql
+index.php
+index.html
+admin/login
+admin.php
+wp-admin
+wp-login.php
+manager/html
+console
+setup
+install
+test
+install/
+</textarea>
+
+<div id="results"></div>
+<div id="iframes"></div>
+
+<div class="small">This script scans localhost:8000 paths and auto-embeds those that respond.  
+If the target blocks framing via CSP or X-Frame-Options, some iframes may appear blank.</div>
+
+<script>
+(async function(){
+  const BASE = 'http://127.0.0.1:8000';
+  const stopBtn = document.getElementById('stopBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const statusEl = document.getElementById('status');
+  const resultsEl = document.getElementById('results');
+  const framesEl = document.getElementById('iframes');
+  const wordlistEl = document.getElementById('wordlist');
+  const concurrencyEl = document.getElementById('concurrency');
+  const timeoutEl = document.getElementById('timeout');
+  let stopRequested = false;
+
+  function setStatus(txt){ statusEl.textContent = txt; }
+  clearBtn.onclick = ()=>{ resultsEl.innerHTML=''; framesEl.innerHTML=''; setStatus('Cleared.'); };
+  stopBtn.onclick = ()=>{ stopRequested=true; stopBtn.disabled=true; setStatus('Stopping…'); };
+
+  function withTimeout(p,ms){ return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]); }
+
+  async function probe(url,timeoutMs){
+    try{
+      const resp = await withTimeout(fetch(url,{mode:'cors',cache:'no-store'}),timeoutMs);
+      return {ok:true,status:resp.status,type:'cors'};
+    }catch(e){
+      try{
+        await withTimeout(fetch(url,{mode:'no-cors',cache:'no-store'}),timeoutMs);
+        return {ok:true,type:'no-cors'};
+      }catch(_){return {ok:false};}
+    }
+  }
+
+  function addResult(path,res){
+    const row=document.createElement('div'); row.className='row';
+    const p=document.createElement('div'); p.className='path'; p.textContent=path; row.appendChild(p);
+    const st=document.createElement('div'); st.className='status';
+    if(res.ok&&res.type==='cors')st.innerHTML=`<span class="good">CORS ${res.status}</span>`;
+    else if(res.ok&&res.type==='no-cors')st.innerHTML=`<span class="heur">responded (no-cors)</span>`;
+    else st.textContent='no response';
+    row.appendChild(st);
+    resultsEl.appendChild(row);
+  }
+
+  function addIframe(url){
+    const wrap=document.createElement('div'); wrap.className='frameWrap';
+    const h=document.createElement('div'); h.textContent=url; h.style.fontFamily='monospace'; h.style.fontSize='13px'; h.style.marginBottom='2px';
+    const f=document.createElement('iframe'); f.src=url; wrap.appendChild(h); wrap.appendChild(f);
+    framesEl.appendChild(wrap);
+  }
+
+  async function scanAll(list,concurrency,timeoutMs){
+    const total=list.length; let done=0,found=0;
+    setStatus(`Scanning ${total} paths…`);
+    const worker=async()=>{
+      while(!stopRequested){
+        const i=done++;
+        if(i>=total)return;
+        const path=list[i].trim();
+        if(!path)return;
+        const full=path.startsWith('/')?BASE+path:BASE+'/'+path;
+        const res=await probe(full,timeoutMs);
+        if(res.ok){
+          addResult(path,res);
+          addIframe(full);
+          found++;
+        }
+        setStatus(`${done}/${total} checked — found ${found}`);
+      }
+    };
+    await Promise.all(Array(concurrency).fill(0).map(worker));
+    setStatus(`Finished — ${found} found`);
+  }
+
+  // auto start
+  const words=wordlistEl.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const concurrency=parseInt(concurrencyEl.value)||32;
+  const timeoutMs=parseInt(timeoutEl.value)||1200;
+  scanAll(words,concurrency,timeoutMs);
+})();
+</script>
+</body>
+</html>
