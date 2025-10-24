@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printed</title>
+</head>
+
+<body>
+    <script>
+        // returns a simple object { name, version, ua } (best-effort)
+        async function detectBrowser() {
+            const result = { name: 'unknown', version: 'unknown', ua: navigator.userAgent || '', source: '' };
+
+            // 1) Try Client Hints (navigator.userAgentData) — modern browsers (Chromium-based, Edge, etc.)
+            if (navigator.userAgentData) {
+                try {
+                    // request high-entropy values if available
+                    const hints = await navigator.userAgentData.getHighEntropyValues(['platform', 'platformVersion', 'uaFullVersion', 'brands', 'fullVersionList']);
+                    // brands is an array like [{brand:"Chromium",version:"116"}, {brand:"Google Chrome",version:"116"}]
+                    const brands = hints.fullVersionList || hints.brands || [];
+                    if (brands.length) {
+                        // pick the most specific recognizable brand (heuristic)
+                        const pick = brands.find(b => /chrome|firefox|safari|edge|opera/i.test(b.brand)) || brands[0];
+                        result.name = pick.brand;
+                        result.version = pick.version || hints.uaFullVersion || 'unknown';
+                        result.source = 'userAgentData';
+                        result.ua = navigator.userAgent;
+                        return result;
+                    }
+                } catch (e) {
+                    // getHighEntropyValues may be blocked by browser or require permissions; fall back
+                    console.warn('userAgentData high-entropy failed', e);
+                }
+            }
+
+            // 2) Fallback to parsing navigator.userAgent
+            const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+            result.ua = ua;
+            result.source = 'userAgent';
+
+            // simple regex checks (best-effort)
+            const rules = [
+                { name: 'Edge (Chromium)', re: /Edg\/([\d.]+)/ },
+                { name: 'Edge (Legacy)', re: /Edge\/([\d.]+)/ },
+                { name: 'Chrome', re: /Chrome\/([\d.]+)/ },
+                { name: 'Firefox', re: /Firefox\/([\d.]+)/ },
+                { name: 'Safari', re: /Version\/([\d.]+).*Safari/ },
+                { name: 'Opera', re: /OPR\/([\d.]+)/ }
+            ];
+
+            for (const r of rules) {
+                const m = ua.match(r.re);
+                if (m) {
+                    result.name = r.name;
+                    result.version = m[1] || 'unknown';
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        // usage
+        detectBrowser().then(info => console.log('Browser info:', info));
+
+    </script>
+</body>
+
+</html>
