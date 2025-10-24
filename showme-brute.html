@@ -118,10 +118,10 @@
 
   const hits = await chunked(PORTS, CONCURRENCY);
   if (hits.length === 0) {
-    status.textContent = '✅ Done. No matching paths found on scanned ports.';
+    status.textContent = 'Done. No matching paths found on scanned ports.';
   } else {
     const list = hits.map(h => `${h.port}/${h.path}`).join(', ');
-    status.textContent = `✅ Done. Found ${hits.length} matches: ${list}`;
+    status.textContent = `Done. Found ${hits.length} matches: ${list}`;
     const meta = document.createElement('div');
     meta.className = 'found-meta';
     meta.textContent = `Embedded ${hits.length} iframe(s) — paths checked: ${PATHS.join(', ')}`;
