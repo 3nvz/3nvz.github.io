@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Redirecting…</title>
+
+  <!-- Meta refresh fallback (2 second delay) -->
+  <meta http-equiv="refresh" content="2;url=http://127.0.0.1/">
+
+  <script>
+    // Primary JS redirect (runs immediately)
+    // use replace() so the current page isn't stored in session history
+    try {
+      window.location.replace("http://127.0.0.1/");
+    } catch (e) {
+      // ignore errors (e.g., very old browsers)
+    }
+  </script>
+
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; padding: 40px; }
+    .notice { max-width: 600px; margin: 0 auto; text-align: center; color: #333; }
+  </style>
+</head>
+<body>
+  <div class="notice">
+    <h1>Redirecting…</h1>
+    <p>If you are not redirected automatically, <a href="http://127.0.0.1/">click here</a>.</p>
+    <p>(Meta refresh + JS + clickable fallback)</p>
+  </div>
+</body>
+</html>
